@@ -1,10 +1,12 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import type { NextPage } from 'next';
+import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 import {
   writeContract,
   readContract,
+  getTransactionReceipt,
   waitForTransactionReceipt,
 } from '@wagmi/core';
 import {
@@ -16,8 +18,23 @@ import { config } from '../wagmi';
 
 const sepoliaRequestAddress = "0x696c83111a49ebb94267ecf4ddf6e220d5a80129";
 const sepoliaWatchAddress = "0x0A0f4321214BB6C7811dD8a71cF587bdaF03f0A0";
+
+const optimismSepoliaRequestAddress = "0xf6919ebb1bFdD282c4edc386bFE3Dea1a1D8AC16";
+const optimismSepoliaWatchAddress = "0x0a0f4321214bb6c7811dd8a71cf587bdaf03f0a0";
 const modelID = "11";
 // estimateFee
+
+export const requestAddress: { [key in (typeof validChainIds)[number]]: string } =
+{
+  11155111: sepoliaRequestAddress,            // Ethereum Sepolia
+  11155420: optimismSepoliaRequestAddress,    // Optimism Sepolia
+};
+export const watchAddress: { [key in (typeof validChainIds)[number]]: string } =
+{
+  11155111: sepoliaWatchAddress,            // Ethereum Sepolia
+  11155420: optimismSepoliaWatchAddress,    // Optimism Sepolia
+};
+
 
 export const validChainIds = config.chains.map((chain) => chain.id);
 
@@ -27,13 +44,21 @@ const Home: NextPage = () => {
   const { address } = useAccount();
   const chainId = useChainId() as (typeof validChainIds)[number];
 
+  const [requestID, setRequestID] = useState('');
+
   useWatchContractEvent({
     chainId: chainId,
-    address: sepoliaWatchAddress,
+    address: watchAddress[chainId] as `0x${string}`,
     abi: oracleABI,
     eventName: 'AICallbackResult',
     onLogs(logs) {
       console.log('New logs!', logs)
+      for (let i = 0; i < logs.length; i++) {
+        let log = logs[i];
+        if (log.topics[2] == requestID) {
+
+        }
+      }
     },
   })
 
@@ -42,7 +67,7 @@ const Home: NextPage = () => {
       const estimatedFee = (await readContract(config, {
         chainId: chainId,
         abi: promptABI,
-        address: sepoliaRequestAddress as `0x${string}`,
+        address: requestAddress[chainId] as `0x${string}`,
         functionName: 'estimateFee',
         args: [modelID],
       }) as bigint);
@@ -54,19 +79,34 @@ const Home: NextPage = () => {
       const result = await writeContract(config, {
         chainId: chainId,
         abi: promptABI,
-        address: sepoliaRequestAddress as `0x${string}`,
+        address: requestAddress[chainId] as `0x${string}`,
         functionName: 'calculateAIResult',
         value: estimatedFee,
         args: [modelID, prompt],
       });
       console.log(result);
-      const res = await waitForTransactionReceipt(config, {
-        chainId: chainId,
-        hash: result,
-      });
-      console.log(res);
-      const logEntry = res.logs[0].topics[2];
-      console.log(logEntry);
+      while (true) {
+        try {
+          const res = await getTransactionReceipt(config, {
+            chainId: chainId,
+            hash: result,
+          });
+    
+          console.log(res); // Do something with the response
+    
+          // If the transaction is found and valid, you may want to break the loop
+          if (res) {
+            const logEntry = res.logs[0].topics[2];
+            setRequestID(logEntry as `0x${string}`);
+            break; // or handle the receipt and exit if needed
+          }
+        } catch (error) {
+          console.error('Error fetching transaction receipt:', error);
+        }
+    
+        // Wait for 5 seconds before making the next request
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
 
     } catch (error) {
       console.log('Error generating NFT:', error);
