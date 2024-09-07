@@ -2,18 +2,64 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
+import {
+  writeContract,
+  readContract,
+  waitForTransactionReceipt,
+} from '@wagmi/core';
+import {
+  useChainId,
+  useAccount
+} from 'wagmi';
+import { config } from '../wagmi';
 
 const sepoliaRequestAddress = "0x696c83111a49ebb94267ecf4ddf6e220d5a80129";
 const sepoliaWatchAddress = "0x0A0f4321214BB6C7811dD8a71cF587bdaF03f0A0";
-const modelId = "11";
+const modelID = "11";
 // estimateFee
-let prompt = "Generate a minimal, abstract 256x256 SVG profile picture for Ethereum address 0xX. Use simple shapes and limited colors. The output should be raw SVG code only, starting with <svg> and ending with </svg>. Do not include any explanation or additional text in your response.";
+
+export const validChainIds = config.chains.map((chain) => chain.id);
+
+export const promptABI = [{"inputs":[{"internalType":"contract IAIOracle","name":"_aiOracle","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"contract IAIOracle","name":"expected","type":"address"},{"internalType":"contract IAIOracle","name":"found","type":"address"}],"name":"UnauthorizedCallbackSource","type":"error"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"requestId","type":"uint256"},{"indexed":false,"internalType":"address","name":"sender","type":"address"},{"indexed":false,"internalType":"uint256","name":"modelId","type":"uint256"},{"indexed":false,"internalType":"string","name":"prompt","type":"string"}],"name":"promptRequest","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"requestId","type":"uint256"},{"indexed":false,"internalType":"string","name":"output","type":"string"},{"indexed":false,"internalType":"bytes","name":"callbackData","type":"bytes"}],"name":"promptsUpdated","type":"event"},{"inputs":[],"name":"aiOracle","outputs":[{"internalType":"contract IAIOracle","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"requestId","type":"uint256"},{"internalType":"bytes","name":"output","type":"bytes"},{"internalType":"bytes","name":"callbackData","type":"bytes"}],"name":"aiOracleCallback","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"modelId","type":"uint256"},{"internalType":"string","name":"prompt","type":"string"}],"name":"calculateAIResult","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"callbackGasLimit","outputs":[{"internalType":"uint64","name":"","type":"uint64"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"modelId","type":"uint256"}],"name":"estimateFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"requestId","type":"uint256"}],"name":"isFinalized","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"requests","outputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"uint256","name":"modelId","type":"uint256"},{"internalType":"bytes","name":"input","type":"bytes"},{"internalType":"bytes","name":"output","type":"bytes"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"modelId","type":"uint256"},{"internalType":"uint64","name":"gasLimit","type":"uint64"}],"name":"setCallbackGasLimit","outputs":[],"stateMutability":"nonpayable","type":"function"}] 
 
 const Home: NextPage = () => {
+  const { address } = useAccount();
+  const chainId = useChainId() as (typeof validChainIds)[number];
+
+  const generateNFT = async() => {
+    try {
+      const estimatedFee = await readContract(config, {
+        chainId: chainId,
+        abi: promptABI,
+        address: sepoliaRequestAddress as `0x${string}`,
+        functionName: 'estimateFee',
+        args: [modelID],
+      });
+
+      let prompt = `Generate a minimal, abstract 256x256 SVG profile picture for Ethereum address ${address}. Use simple shapes and limited colors. The output should be raw SVG code only, starting with <svg> and ending with </svg>. Do not include any explanation or additional text in your response.`;
+
+      const result = await writeContract(config, {
+        chainId: chainId,
+        abi: promptABI,
+        address: sepoliaRequestAddress as `0x${string}`,
+        functionName: 'calculateAIResult',
+        value: estimatedFee as bigint,
+        args: [modelID, prompt],
+      });
+      await waitForTransactionReceipt(config, {
+        chainId: chainId,
+        hash: result,
+      });
+
+    } catch (error) {
+      console.log('Error generating NFT:', error);
+    }
+  }
+
   return (
     <div className={styles.container}>
       <Head>
-        <title>RainbowKit App</title>
+        <title>Onchain Abstract AI-generated NFTs</title>
         <meta
           content="Generated by @rainbow-me/create-rainbowkit"
           name="description"
@@ -23,11 +69,13 @@ const Home: NextPage = () => {
 
       <main className={styles.main}>
         <ConnectButton />
-
-        <h1 className={styles.title}>
+        <button onClick={generateNFT} className={styles.modalButton}>
+          Generate NFT
+        </button>
+        {/* <h1 className={styles.title}>
           Welcome to <a href="">RainbowKit</a> + <a href="">wagmi</a> +{' '}
           <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+        </h1> */}
       </main>
     </div>
   );
