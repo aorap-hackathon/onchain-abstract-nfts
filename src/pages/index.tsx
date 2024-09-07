@@ -8,6 +8,7 @@ import {
   readContract,
   getTransactionReceipt,
   waitForTransactionReceipt,
+  watchContractEvent,
 } from '@wagmi/core';
 import {
   useChainId,
@@ -20,7 +21,7 @@ const sepoliaRequestAddress = "0x696c83111a49ebb94267ecf4ddf6e220d5a80129";
 const sepoliaWatchAddress = "0x0A0f4321214BB6C7811dD8a71cF587bdaF03f0A0";
 
 const optimismSepoliaRequestAddress = "0xf6919ebb1bFdD282c4edc386bFE3Dea1a1D8AC16";
-const optimismSepoliaWatchAddress = "0x0a0f4321214bb6c7811dd8a71cf587bdaf03f0a0";
+const optimismSepoliaWatchAddress = "0x0A0f4321214BB6C7811dD8a71cF587bdaF03f0A0";
 const modelID = "11";
 // estimateFee
 
@@ -45,6 +46,17 @@ const Home: NextPage = () => {
   const chainId = useChainId() as (typeof validChainIds)[number];
 
   const [requestID, setRequestID] = useState('');
+  const [loadingTx, setLoadingTx] = useState(false);
+  const [loadingCallback, setLoadingCallback] = useState(false);
+  const [dots, setDots] = useState(0);
+
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setDots((prevDots) => (prevDots % 4) + 1);
+  //   }, 300); // Update every 300ms (0.3 seconds)
+
+  //   return () => clearInterval(interval); // Cleanup on unmount
+  // }, []);
 
   useWatchContractEvent({
     chainId: chainId,
@@ -56,10 +68,17 @@ const Home: NextPage = () => {
       for (let i = 0; i < logs.length; i++) {
         let log = logs[i];
         if (log.topics[2] == requestID) {
-
+          console.log('found', log)
+          setLoadingCallback(false);
+          // const bytes = 
         }
       }
     },
+    onError(error) {
+      console.log(error);
+    },
+    // syncConnectedChain: true,
+    // strict: true,
   })
 
   const generateNFT = async() => {
@@ -72,7 +91,7 @@ const Home: NextPage = () => {
         args: [modelID],
       }) as bigint);
       console.log(estimatedFee);
-      console.log(estimatedFee * BigInt(6) / BigInt(5))
+      // console.log(estimatedFee * BigInt(6) / BigInt(5))
 
       let prompt = `Generate a minimal, abstract 256x256 SVG profile picture for Ethereum address ${address}. Use simple shapes and limited colors. The output should be raw SVG code only, starting with <svg> and ending with </svg>. Do not include any explanation or additional text in your response.`;
 
@@ -84,6 +103,7 @@ const Home: NextPage = () => {
         value: estimatedFee,
         args: [modelID, prompt],
       });
+      setLoadingTx(true);
       console.log(result);
       while (true) {
         try {
@@ -97,7 +117,10 @@ const Home: NextPage = () => {
           // If the transaction is found and valid, you may want to break the loop
           if (res) {
             const logEntry = res.logs[0].topics[2];
+            console.log('im there an logEntry is', logEntry);
             setRequestID(logEntry as `0x${string}`);
+            setLoadingCallback(true);
+
             break; // or handle the receipt and exit if needed
           }
         } catch (error) {
@@ -110,6 +133,8 @@ const Home: NextPage = () => {
 
     } catch (error) {
       console.log('Error generating NFT:', error);
+    } finally {
+      setLoadingTx(false);
     }
   }
 
@@ -129,6 +154,11 @@ const Home: NextPage = () => {
         <button onClick={generateNFT} className={styles.modalButton}>
           Generate NFT
         </button>
+        {loadingTx && <div>Waiting for transaction</div>}
+        {loadingCallback && <div>Generating NFT</div>}
+        {/* {loadingTx && <div>Waiting for transaction{'.'.repeat(dots)}</div>}
+        {loadingCallback && <div>Generating NFT{'.'.repeat(dots)}</div>}
+        {requestID !== '' && <div>Request ID: {parseInt(requestID, 16)}</div>} */}
         {/* <h1 className={styles.title}>
           Welcome to <a href="">RainbowKit</a> + <a href="">wagmi</a> +{' '}
           <a href="https://nextjs.org">Next.js!</a>
