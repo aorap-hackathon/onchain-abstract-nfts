@@ -3,7 +3,9 @@ import { http } from 'viem'
 
 import {
   optimismSepolia,
-  sepolia
+  sepolia,
+  base,
+  optimism,
 } from 'wagmi/chains';
 
 
