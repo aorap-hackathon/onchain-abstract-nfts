@@ -19,6 +19,7 @@ import { config } from '../wagmi';
 
 const sepoliaRequestAddress = "0x696c83111a49ebb94267ecf4ddf6e220d5a80129";
 const sepoliaWatchAddress = "0x0A0f4321214BB6C7811dD8a71cF587bdaF03f0A0";
+const sepoliaNftAddress = "0xccf68309b374bf122c7f4777340866df31cfddd9";
 
 const optimismSepoliaRequestAddress = "0xf6919ebb1bFdD282c4edc386bFE3Dea1a1D8AC16";
 const optimismSepoliaWatchAddress = "0x0A0f4321214BB6C7811dD8a71cF587bdaF03f0A0";
@@ -39,7 +40,7 @@ export const watchAddress: { [key in (typeof validChainIds)[number]]: string } =
 };
 export const nftAddress: { [key in (typeof validChainIds)[number]]: string } =
 {
-  11155111: sepoliaWatchAddress,            // Ethereum Sepolia
+  11155111: sepoliaNftAddress,              // Ethereum Sepolia
   11155420: optimismSepoliaNFTAddress,      // Optimism Sepolia
 };
 
