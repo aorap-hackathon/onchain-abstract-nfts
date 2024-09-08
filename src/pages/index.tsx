@@ -46,9 +46,11 @@ const Home: NextPage = () => {
   const chainId = useChainId() as (typeof validChainIds)[number];
 
   const [requestID, setRequestID] = useState('');
-  const [svgString, setSvgString] = useState('');
+  const [svgStrings, setSvgStrings] = useState<string[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
   const [loadingCallback, setLoadingCallback] = useState(false);
+  const [inputValue, setInputValue] = useState(''); // State for the input field
+
 
   useWatchContractEvent({
     chainId: chainId,
@@ -66,8 +68,8 @@ const Home: NextPage = () => {
           console.log(hexString);
           const svgStringRes = Buffer.from(hexString, 'hex').toString('utf8');
           console.log(svgStringRes);
-          setSvgString(svgStringRes);
-          // setSvgStrings(prevSvgStrings => [...prevSvgStrings, svgStringRes]);
+          // setSvgString(svgStringRes);
+          setSvgStrings(prevSvgStrings => [...prevSvgStrings, svgStringRes]);
         }
       }
     },
@@ -90,7 +92,7 @@ const Home: NextPage = () => {
       // console.log(estimatedFee);
       // console.log(estimatedFee * BigInt(6) / BigInt(5))
 
-      let prompt = `Generate a unique, minimal, abstract 256x256 SVG profile picture for Ethereum address ${address} and seed ${Math.floor(Math.random() * 1_000_000) + 1}. Use simple shapes and limited colors. The output should be raw SVG code only, starting with <svg> and ending with </svg>. Specify width and height. Do not include text in image. Do not include any explanation or additional text in your response.`;
+      let prompt = `Generate a unique, minimal, abstract 256x256 SVG profile picture for Ethereum address ${address} and seed ${Math.floor(Math.random() * 1_000_000) + 1}. Use simple shapes and limited colors. The output should be raw SVG code only, starting with <svg> and ending with </svg>. Specify width and height. Do not include text in image. Do not include any explanation or additional text in your response. ${inputValue}`;
 
       console.log(prompt);
 
@@ -137,6 +139,13 @@ const Home: NextPage = () => {
     }
   }
 
+  const mintNFT = async (svg: any) => {
+    // Your logic to mint the NFT
+    // Example:
+    // await yourMintNFTFunction();
+    console.log('SVG:', svg);
+  };
+
   return (
     <div className={styles.container}>
       <Head>
@@ -150,13 +159,29 @@ const Home: NextPage = () => {
 
       <main className={styles.main}>
         <ConnectButton />
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          className={styles.inputField} // Add styles as needed
+          placeholder='Add some custom details.'
+        />
         <button onClick={generateNFT} className={styles.modalButton}>
           Generate NFT
         </button>
         {loadingTx && <div>Waiting for transaction</div>}
         {loadingCallback && <div>Generating NFT</div>}
         {requestID !== '' && <div>Request ID: {parseInt(requestID, 16)}</div>}
-        {svgString !== '' && <div dangerouslySetInnerHTML={{ __html: svgString }}/>}
+        <div className={styles.nftGrid}>
+          {svgStrings.map((svg, index) => (
+            <div key={index} className={styles.nftItem}>
+              <div dangerouslySetInnerHTML={{ __html: svg }} />
+              <button onClick={() => mintNFT(svg)} className={styles.modalButton}>
+                Mint NFT
+              </button>
+            </div>
+          ))}
+        </div>
       </main>
     </div>
   );
