@@ -46,39 +46,36 @@ const Home: NextPage = () => {
   const chainId = useChainId() as (typeof validChainIds)[number];
 
   const [requestID, setRequestID] = useState('');
+  const [svgString, setSvgString] = useState('');
   const [loadingTx, setLoadingTx] = useState(false);
   const [loadingCallback, setLoadingCallback] = useState(false);
-  const [dots, setDots] = useState(0);
-
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setDots((prevDots) => (prevDots % 4) + 1);
-  //   }, 300); // Update every 300ms (0.3 seconds)
-
-  //   return () => clearInterval(interval); // Cleanup on unmount
-  // }, []);
 
   useWatchContractEvent({
     chainId: chainId,
     address: watchAddress[chainId] as `0x${string}`,
     abi: oracleABI,
     eventName: 'AICallbackResult',
-    onLogs(logs) {
+    onLogs(logs: any) {
       console.log('New logs!', logs)
       for (let i = 0; i < logs.length; i++) {
         let log = logs[i];
         if (log.topics[2] == requestID) {
           console.log('found', log)
           setLoadingCallback(false);
-          // const bytes = 
+          const hexString = log.args.output.slice(2);
+          console.log(hexString);
+          const svgStringRes = Buffer.from(hexString, 'hex').toString('utf8');
+          console.log(svgStringRes);
+          setSvgString(svgStringRes);
+          // setSvgStrings(prevSvgStrings => [...prevSvgStrings, svgStringRes]);
         }
       }
     },
     onError(error) {
       console.log(error);
     },
-    // syncConnectedChain: true,
-    // strict: true,
+    syncConnectedChain: true,
+    strict: true,
   })
 
   const generateNFT = async() => {
@@ -90,10 +87,12 @@ const Home: NextPage = () => {
         functionName: 'estimateFee',
         args: [modelID],
       }) as bigint);
-      console.log(estimatedFee);
+      // console.log(estimatedFee);
       // console.log(estimatedFee * BigInt(6) / BigInt(5))
 
-      let prompt = `Generate a minimal, abstract 256x256 SVG profile picture for Ethereum address ${address}. Use simple shapes and limited colors. The output should be raw SVG code only, starting with <svg> and ending with </svg>. Do not include any explanation or additional text in your response.`;
+      let prompt = `Generate a unique, minimal, abstract 256x256 SVG profile picture for Ethereum address ${address} and seed ${Math.floor(Math.random() * 1_000_000) + 1}. Use simple shapes and limited colors. The output should be raw SVG code only, starting with <svg> and ending with </svg>. Specify width and height. Do not include text in image. Do not include any explanation or additional text in your response.`;
+
+      console.log(prompt);
 
       const result = await writeContract(config, {
         chainId: chainId,
@@ -156,13 +155,8 @@ const Home: NextPage = () => {
         </button>
         {loadingTx && <div>Waiting for transaction</div>}
         {loadingCallback && <div>Generating NFT</div>}
-        {/* {loadingTx && <div>Waiting for transaction{'.'.repeat(dots)}</div>}
-        {loadingCallback && <div>Generating NFT{'.'.repeat(dots)}</div>}
-        {requestID !== '' && <div>Request ID: {parseInt(requestID, 16)}</div>} */}
-        {/* <h1 className={styles.title}>
-          Welcome to <a href="">RainbowKit</a> + <a href="">wagmi</a> +{' '}
-          <a href="https://nextjs.org">Next.js!</a>
-        </h1> */}
+        {requestID !== '' && <div>Request ID: {parseInt(requestID, 16)}</div>}
+        {svgString !== '' && <div dangerouslySetInnerHTML={{ __html: svgString }}/>}
       </main>
     </div>
   );
